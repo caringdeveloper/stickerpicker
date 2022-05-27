@@ -27,7 +27,6 @@ upload_url: Optional[URL] = None
 if TYPE_CHECKING:
     from typing import TypedDict
 
-
     class MediaInfo(TypedDict):
         w: int
         h: int
@@ -35,7 +34,6 @@ if TYPE_CHECKING:
         mimetype: str
         thumbnail_url: Optional[str]
         thumbnail_info: Optional['MediaInfo']
-
 
     class StickerInfo(TypedDict, total=False):
         body: str
@@ -56,10 +54,12 @@ async def load_config(path: str) -> None:
             homeserver_url = config["homeserver"]
             access_token = config["access_token"]
     except FileNotFoundError:
-        print("Matrix config file not found. Please enter your homeserver and access token.")
+        print(
+            "Matrix config file not found. Please enter your homeserver and access token.")
         homeserver_url = input("Homeserver URL: ")
         access_token = input("Access token: ")
-        whoami_url = URL(homeserver_url) / "_matrix" / "client" / "r0" / "account" / "whoami"
+        whoami_url = URL(homeserver_url) / "_matrix" / \
+            "client" / "v3" / "account" / "whoami"
         if whoami_url.scheme not in ("https", "http"):
             whoami_url = whoami_url.with_scheme("https")
         user_id = await whoami(whoami_url, access_token)
@@ -71,7 +71,7 @@ async def load_config(path: str) -> None:
             }, config_file)
         print(f"Wrote config to {path}")
 
-    upload_url = URL(homeserver_url) / "_matrix" / "media" / "r0" / "upload"
+    upload_url = URL(homeserver_url) / "_matrix" / "media" / "v3" / "upload"
 
 
 async def whoami(url: URL, access_token: str) -> str:
@@ -85,6 +85,11 @@ async def whoami(url: URL, access_token: str) -> str:
 
 async def upload(data: bytes, mimetype: str, filename: str) -> str:
     url = upload_url.with_query({"filename": filename})
-    headers = {"Content-Type": mimetype, "Authorization": f"Bearer {access_token}"}
+    headers = {"Content-Type": mimetype,
+               "Authorization": f"Bearer {access_token}"}
     async with ClientSession() as sess, sess.post(url, data=data, headers=headers) as resp:
-        return (await resp.json())["content_uri"]
+        try:
+            return (await resp.json())["content_uri"]
+        except:
+            print("Unexpected mime type")
+            return None

@@ -80,6 +80,10 @@ async def upload_sticker(file: str, directory: str, old_stickers: Dict[str, matr
         image_data, width, height = util.convert_image(image_data)
         print(".", end="", flush=True)
         mxc = await matrix.upload(image_data, "image/png", file)
+
+        if mxc is None:
+            return None
+
         print(".", end="", flush=True)
         sticker = util.make_sticker(mxc, width, height, len(image_data), name)
         sticker["id"] = sticker_id
@@ -109,7 +113,7 @@ async def main(args: argparse.Namespace) -> None:
 
     for file in sorted(os.listdir(args.path)):
         sticker = await upload_sticker(file, args.path, old_stickers=old_stickers)
-        if sticker:
+        if sticker is not None:
             pack["stickers"].append(sticker)
 
     with util.open_utf8(meta_path, "w") as pack_file:
@@ -131,10 +135,12 @@ parser.add_argument("--config",
                     type=str, default="config.json", metavar="file")
 parser.add_argument("--title", help="Override the sticker pack displayname", type=str,
                     metavar="title")
-parser.add_argument("--id", help="Override the sticker pack ID", type=str, metavar="id")
+parser.add_argument(
+    "--id", help="Override the sticker pack ID", type=str, metavar="id")
 parser.add_argument("--add-to-index", help="Sticker picker pack directory (usually 'web/packs/')",
                     type=str, metavar="path")
-parser.add_argument("path", help="Path to the sticker pack directory", type=str)
+parser.add_argument(
+    "path", help="Path to the sticker pack directory", type=str)
 
 
 def cmd():
